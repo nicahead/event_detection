@@ -88,10 +88,12 @@ def replace_digit(event_content):
     :return:
     """
     words = event_content.split(' ')
+    res = ''
     for word in words:
         if is_number(word):
-            event_content = event_content.replace(word, '<NUM>')
-    return event_content
+            word = '<NUM>'
+        res += word + ' '
+    return res
 
 
 def stopwordslist():
@@ -248,11 +250,11 @@ def get_pretraining_dict():
     vocab = []
     vectors, iw, wi, dim = read_vectors('data/merge_sgns_bigram_char300.txt', 0)  # 所有字的词典
     wi['<PAD>'] = len(iw)
-    wi['<UNK>'] = len(iw) + 1
-    wi['<NUM>'] = len(iw) + 2
+    wi['<NUM>'] = len(iw) + 1
+    wi['<UNK>'] = len(iw) + 2
     vectors['<PAD>'] = np.zeros((300,))
+    vectors['<NUM>'] = np.random.uniform(-0.1, 0.1, 300)
     vectors['<UNK>'] = np.zeros((300,))
-    vectors['<NUM>'] = np.zeros((300,))
 
     words = []
     # 根据语料得到缩小版的预训练参数
@@ -280,16 +282,20 @@ def get_pretraining_dict():
         words += word
         words += [char for char in word]
 
-    words = list(set(words))  # 语料中所有的词
-    chars = [list(word) if word not in ['<PAD>', '<NUM>', '<UNK>'] else '的' for word in words]
-    # chars = [list(word) for word in words]
-    from itertools import chain
-    chars = list(chain(*chars))
-    chars = list(set(chars))  # 语料中所有的字
-    chars.append('<PAD>')
-    chars.append('<UNK>')
-    chars.append('<NUM>')
-    tokens = list(set(chars + words))
+    # words = list(set(words))  # 语料中所有的词
+    words.append('<PAD>')
+    words.append('<NUM>')
+    words.append('<UNK>')
+    # 字
+    # chars = [list(word) if word not in ['<PAD>', '<NUM>', '<UNK>'] else '的' for word in words]
+    # from itertools import chain
+    # chars = list(chain(*chars))
+    # chars = list(set(chars))  # 语料中所有的字
+    # chars.append('<PAD>')
+    # chars.append('<UNK>')
+    # chars.append('<NUM>')
+    # tokens = list(set(chars + words))
+    tokens = list(set(words))
     # 取出token对应的信息
     # word2idx和vector matrix
     word2idx = {}
@@ -297,7 +303,12 @@ def get_pretraining_dict():
     index = 0
     for token in tokens:
         word2idx[token] = index
-        vec_matrix.append(vectors.get(token, vectors['<UNK>']))
+        try:
+            embedding = vectors[token]
+        except Exception:
+            embedding = np.array([vectors.get(word, vectors['<UNK>']) for word in token])
+            embedding = embedding.mean(axis=0)
+        vec_matrix.append(embedding)
         index += 1
     vocab.append(word2idx)
     vocab.append(vec_matrix)
@@ -376,8 +387,8 @@ if __name__ == '__main__':
     get_corpus_dataset("train")
     get_corpus_dataset("dev")  # 提取语料中的句子和label
     get_corpus_dataset("test")  # 提取语料中的句子和label
+
     get_pretraining_dict()  # 根据以上三个文件中的句子得到缩小版的词典
     get_dataset("train")  # 获得三元组数据集
     get_dataset("dev")  # 获得三元组数据集
     get_dataset("test")  # 获得三元组数据集
-

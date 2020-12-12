@@ -33,6 +33,6 @@ BATCH_SIZE = 128
 LR = 0.001  # learning rate
 LR_DECAY_RATE = 0.9
 # N_EVENT_CLASS = 65  # 事件本体中的事件类个数
-N_EVENT_CLASS = 32  # 事件本体中的事件类个数
+N_EVENT_CLASS = 33  # 事件本体中的事件类个数
 
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
