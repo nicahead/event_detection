@@ -128,6 +128,7 @@ def eval_graph(path):
     plt.title('Evaluation')
     plt.xlabel("epoch")
     plt.ylabel("rate")
+    plt.savefig('models/temp/loss.jpg')
     plt.show()
 
 

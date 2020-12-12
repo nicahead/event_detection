@@ -78,13 +78,13 @@ class LSTMEncoder(nn.Module):
         self.rnn = nn.LSTM(input_size=input_size, hidden_size=config.HIDDEN_DIM,
                            num_layers=config.N_LAYERS, batch_first=True, dropout=dropout,
                            bidirectional=config.BI)
-        self.dropout = nn.Dropout(p=config.DROPOUT_RATE)
 
         # GRU
         # self.rnn = nn.GRU(input_size=input_size, hidden_size=config.HIDDEN_DIM,
         #                   num_layers=config.N_LAYERS, batch_first=True, dropout=dropout,
         #                   bidirectional=config.BI)
 
+        self.dropout = nn.Dropout(0.5)
         if config.BI:
             self.w_omega = nn.Parameter(torch.Tensor(
                 config.HIDDEN_DIM * 2, config.HIDDEN_DIM * 2))
@@ -96,29 +96,9 @@ class LSTMEncoder(nn.Module):
         nn.init.uniform_(self.w_omega, -0.1, 0.1)
         nn.init.uniform_(self.u_omega, -0.1, 0.1)
 
-    # # x: [batch, seq_len, hidden_dim*2]
-    # # x: [batch, seq_len, hidden_dim*2]
-    # # query : [batch, seq_len, hidden_dim * 2]
-    # # 软注意力机制 (key=value=x)
-    # def attention_net(self, x, query, mask=None):
-    #     d_k = query.size(-1)  # d_k为query的维度
-    #     # query:[batch, seq_len, hidden_dim*2], x.t:[batch, hidden_dim*2, seq_len]
-    #     #         print("query: ", query.shape, x.transpose(1, 2).shape)  # torch.Size([128, 38, 128]) torch.Size([128, 128, 38])
-    #     # 打分机制 scores: [batch, seq_len, seq_len]
-    #     scores = torch.matmul(query, x.transpose(1, 2)) / math.sqrt(d_k)
-    #     #         print("score: ", scores.shape)  # torch.Size([128, 38, 38])
-    #     # 对最后一个维度 归一化得分
-    #     alpha_n = F.softmax(scores, dim=-1)
-    #     #         print("alpha_n: ", alpha_n.shape)    # torch.Size([128, 38, 38])
-    #     # 对权重化的x求和
-    #     # [batch, seq_len, seq_len]·[batch,seq_len, hidden_dim*2] = [batch,seq_len,hidden_dim*2] -> [batch, hidden_dim*2]
-    #     context = torch.matmul(alpha_n, x).sum(1)
-    #     return context, alpha_n
-
     def forward(self, inputs):
         # inputs:[batch_size,seq_length,embed_dim]
         outputs, hn = self.rnn(inputs)  # outpus:[batch_size,seq_length,HIDDEN_DIM*2]
-        outputs = self.dropout(outputs)
         if config.ATTENTION:
             # 加入注意力机制
             # 1. 将query和每个key进行相似度计算得到权重
@@ -129,9 +109,6 @@ class LSTMEncoder(nn.Module):
             # 3. 将权重和相应的键值value进行加权求和得到最后的attention
             scored_out = outputs * alpha  # (batch_size, seq_len, 2 * HIDDEN_DIM)
             output = torch.sum(scored_out, dim=1)  # (batch_size,2 * HIDDEN_DIM)
-            # query = self.dropout(outputs)
-            # # 加入attention机制
-            # output, alpha_n = self.attention_net(outputs, query)
         else:
             output = outputs[:, -1, :]
         return output
@@ -154,46 +131,28 @@ class SiameseNetwork(nn.Module):
         # 使用TextRCNN编码
         # self.encoder = TextRCNNEncoder()
 
-        # self.dropout = nn.Dropout(p=config.DROPOUT_RATE)
+        self.dropout = nn.Dropout(p=config.DROPOUT_RATE)
         self.relu = nn.ReLU()
         seq_in_size = 2 * config.HIDDEN_DIM
         if config.BI:
             seq_in_size *= 2
-        # lin_config = [seq_in_size] * 2
-        # self.out = nn.Sequential(
-        #     nn.Linear(*lin_config),
-        #     self.relu,
-        #     self.dropout,
-        #     nn.Linear(lin_config[0], 512),
-        #     self.relu,
-        #     self.dropout,
-        #     nn.Linear(512, 256),
-        #     self.relu,
-        #     self.dropout,
-        #     nn.Linear(256, 2))
-        if config.BI:
-            self.bn1 = nn.BatchNorm1d(config.HIDDEN_DIM * 2)
-        else:
-            self.bn1 = nn.BatchNorm1d(config.HIDDEN_DIM)
-        self.fc = nn.Sequential(
+        self.out = nn.Sequential(
             nn.Linear(seq_in_size, 512),
-            nn.BatchNorm1d(512),
             self.relu,
-            # self.dropout,
+            self.dropout,
             nn.Linear(512, 2))
 
     def forward_once(self, input):
-        embeded = self.embed(input)  # (batch_size,seq_length,embed_dim)
+        embeded = self.embed(input)
         if config.FIX_EMDED:
             embeded = embeded.detach()
         if config.PROJ:
             embeded = self.relu(self.projection(embeded))
-        encoded = self.encoder(embeded)  # (batch_size,hidden_dim * 2)
-        encoded = self.bn1(encoded)
+        encoded = self.encoder(embeded)
         return encoded
 
     def forward(self, input1, input2):
         premise = self.forward_once(input1)  # [batch_size,hidden_dim*2]
         hypothesis = self.forward_once(input2)
-        scores = self.fc(torch.cat([premise, hypothesis], 1))  # [batch_size,2]
+        scores = self.out(torch.cat([premise, hypothesis], 1))  # [batch_size,2]
         return scores

@@ -22,6 +22,11 @@ import os
 
 from data_helper import BatchManager
 
+random.seed(2020)
+np.random.seed(2020)
+torch.manual_seed(2020)
+torch.cuda.manual_seed_all(2020)
+
 
 def prepare_data():
     # 加载预训练词典
@@ -37,28 +42,22 @@ def prepare_data():
 # 一个epoch的训练
 def train(model, train_manager, loss_func, optimizer, device):
     total_loss = []
-    y_true = []
-    y_pred = []
     model.train()
     with tqdm(total=train_manager.len_data, desc='train batch') as pbar:
         for (text, event, target) in train_manager.iter_batch(shuffle=True):
             text = torch.LongTensor(text).to(device)
             event = torch.LongTensor(event).to(device)
             target = torch.LongTensor(target).to(device)
-            y_true.extend(target.tolist())
+
             output = model(text, event)
-            y_pred.extend(torch.max(output, 1)[1].tolist())
             loss = loss_func(output, target)
+
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
             total_loss.append(loss.item())
             pbar.update(1)
         ave_loss = sum(total_loss) / len(total_loss)
-    # 打印二分类效果
-    target_names = ['0', '1']
-    print('train binary classification:')
-    print(classification_report(y_true, y_pred, target_names=target_names))
     return ave_loss
 
 
@@ -81,14 +80,8 @@ def dev(model, dev_manager, loss_func, device):
     ave_loss = sum(total_loss) / len(total_loss)
     # 打印二分类效果
     target_names = ['0', '1']
-    print('dev binary classification:')
     print(classification_report(y_true, y_pred, target_names=target_names))
     return ave_loss
-
-
-def adjust_learning_rate(optimizer, decay_rate=0.5):
-    for param_group in optimizer.param_groups:
-        param_group['lr'] = param_group['lr'] * decay_rate
 
 
 if __name__ == '__main__':
@@ -108,11 +101,10 @@ if __name__ == '__main__':
     if config.DEVICE.type == 'cuda':
         model = model.cuda()
     optimizer = optim.Adam(model.parameters(), lr=config.LR)
-    # optimizer = optim.Adam(model.parameters(), lr=config.LR, weight_decay=config.LR_DECAY_RATE)
 
     # 设置权重，解决正负样本不均衡的问题
-    weight = torch.from_numpy(np.array([0.1, 5])).float().to(config.DEVICE)
-    loss_func = torch.nn.CrossEntropyLoss(weight=weight)
+    # weight = torch.from_numpy(np.array([0.1, 1.0])).float().to(config.DEVICE)
+    # loss_func = torch.nn.CrossEntropyLoss(weight=weight)
     loss_func = torch.nn.CrossEntropyLoss()
 
     train_losses = []
@@ -132,8 +124,6 @@ if __name__ == '__main__':
     best_f1_model = None
     best_f1_model_name = None
     for epoch in range(config.EPOCH):
-        if (epoch + 1) % 5 == 0:
-            adjust_learning_rate(optimizer, config.LR_DECAY_RATE)
         print('=================================== epoch:{} ==================================='.format(epoch))
         train_loss = train(model, train_manager, loss_func, optimizer, config.DEVICE)
         dev_loss = dev(model, dev_manager, loss_func, config.DEVICE)
