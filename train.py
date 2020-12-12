@@ -3,6 +3,8 @@
 # @Author    :   nicahead@gmail.com
 # @File      :   train.py
 # @Desc      :
+import random
+
 from sklearn.metrics import classification_report
 
 import config
@@ -14,6 +16,7 @@ from tqdm import tqdm
 import copy
 
 from eval import evaluate, eval_graph
+from loss import ContrastiveLoss
 from model import SiameseNetwork
 import torch.optim as optim
 import torch.nn.functional as F
@@ -49,8 +52,11 @@ def train(model, train_manager, loss_func, optimizer, device):
             event = torch.LongTensor(event).to(device)
             target = torch.LongTensor(target).to(device)
 
-            output = model(text, event)
-            loss = loss_func(output, target)
+            # output = model(text, event)
+            # loss = loss_func(output, target)
+
+            output1, output2 = model(text, event)
+            loss = loss_func(output1, output2, target)
 
             optimizer.zero_grad()
             loss.backward()
@@ -71,16 +77,20 @@ def dev(model, dev_manager, loss_func, device):
             text = torch.LongTensor(text).to(device)
             event = torch.LongTensor(event).to(device)
             target = torch.LongTensor(target).to(device)
-            y_true.extend(target.tolist())
+            # y_true.extend(target.tolist())
             output = model(text, event)
-            y_pred.extend(torch.max(output, 1)[1].tolist())
-            loss = loss_func(output, target)
+            # y_pred.extend(torch.max(output, 1)[1].tolist())
+            # loss = loss_func(output, target)
+
+            output1, output2 = model(text, event)
+            loss = loss_func(output1, output2, target)
+
             total_loss.append(loss.item())
             pbar.update(1)
     ave_loss = sum(total_loss) / len(total_loss)
     # 打印二分类效果
-    target_names = ['0', '1']
-    print(classification_report(y_true, y_pred, target_names=target_names))
+    # target_names = ['0', '1']
+    # print(classification_report(y_true, y_pred, target_names=target_names))
     return ave_loss
 
 
@@ -105,7 +115,8 @@ if __name__ == '__main__':
     # 设置权重，解决正负样本不均衡的问题
     # weight = torch.from_numpy(np.array([0.1, 1.0])).float().to(config.DEVICE)
     # loss_func = torch.nn.CrossEntropyLoss(weight=weight)
-    loss_func = torch.nn.CrossEntropyLoss()
+    # loss_func = torch.nn.CrossEntropyLoss()
+    loss_func = ContrastiveLoss()
 
     train_losses = []
     dev_losses = []

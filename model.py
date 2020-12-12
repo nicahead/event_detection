@@ -154,5 +154,6 @@ class SiameseNetwork(nn.Module):
     def forward(self, input1, input2):
         premise = self.forward_once(input1)  # [batch_size,hidden_dim*2]
         hypothesis = self.forward_once(input2)
-        scores = self.out(torch.cat([premise, hypothesis], 1))  # [batch_size,2]
-        return scores
+        # scores = self.out(torch.cat([premise, hypothesis], 1))  # [batch_size,2]
+        # return scores
+        return premise,hypothesis

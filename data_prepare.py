@@ -8,6 +8,8 @@ import json
 import collections
 import random
 
+import string
+
 import config
 import jieba
 import pandas as pd
@@ -91,23 +93,26 @@ def replace_digit(event_content):
             event_content = event_content.replace(word, '<NUM>')
     return event_content
 
+
 def stopwordslist():
     """
     加载停用词表
     """
-    stopwords = [line.strip() for line in open('cn_stopwords.txt',encoding='UTF-8').readlines()]
+    stopwords = [line.strip() for line in open('cn_stopwords.txt', encoding='UTF-8').readlines()]
     return stopwords
+
 
 def del_stopwords(words):
     """
     去停用词
     """
     stopwords = stopwordslist()
-    out_str = ''
+    res = []
     for word in words:
         if word not in stopwords and word != '\n':
-            out_str += word
-    return out_str
+            res.append(word)
+    return res
+
 
 def sentence_handle(sentence):
     """
@@ -115,13 +120,11 @@ def sentence_handle(sentence):
     :param sentence:
     :return:
     """
-    # # 去标点符号
-    # rec = re.sub('[%s]' % re.escape(string.punctuation),'',rec)
-    # # 精确分词
-    # words = jieba.lcut(rec) 
-    # stc = del_stopwords(words)
-
-    newline = jieba.cut(sentence, cut_all=False)
+    # 去标点符号
+    rec = re.sub('[%s]' % re.escape(string.punctuation), '', sentence)
+    # 精确分词
+    words = jieba.lcut(rec)
+    newline = del_stopwords(words)
     str_out = ' '.join(newline).replace('，', '').replace('。', '').replace('?', '').replace('!', '') \
         .replace('“', '').replace('”', '').replace('：', '').replace('‘', '').replace('’', '').replace('-', '') \
         .replace('（', '').replace('）', '').replace('《', '').replace('》', '').replace('；', '').replace('.', '') \
@@ -149,7 +152,7 @@ def get_corpus_dataset(name="train"):
         for event in item['event_list']:
             # 只将事件本体中定义过事件类型的作为数据集，且如果一个句子中包含重复的事件，只保留一个
             if event['event_type'] in id2label and event['event_type'] not in info['label']:
-            # if event['event_type'] not in info['label']:
+                # if event['event_type'] not in info['label']:
                 info['text'] = item['text'].replace('\n', '')
                 info['label'] += event['event_type'] + ' '
         if 'text' in info.keys():
@@ -377,3 +380,4 @@ if __name__ == '__main__':
     get_dataset("train")  # 获得三元组数据集
     get_dataset("dev")  # 获得三元组数据集
     get_dataset("test")  # 获得三元组数据集
+
