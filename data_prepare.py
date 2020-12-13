@@ -123,8 +123,8 @@ def get_corpus_dataset(name="train"):
         info['label'] = ''
         for event in item['event_list']:
             # 只将事件本体中定义过事件类型的作为数据集，且如果一个句子中包含重复的事件，只保留一个
-            # if event['event_type'] in id2label and event['event_type'] not in info['label']:
-            if event['event_type'] not in info['label']:
+            if event['event_type'] in id2label and event['event_type'] not in info['label']:
+            # if event['event_type'] not in info['label']:
                 info['text'] = item['text'].replace('\n', '')
                 info['label'] += event['event_type'] + ' '
         if 'text' in info.keys():
@@ -220,11 +220,11 @@ def get_pretraining_dict():
     vocab = []
     vectors, iw, wi, dim = read_vectors('data/merge_sgns_bigram_char300.txt', 0)  # 所有字的词典
     wi['<PAD>'] = len(iw)
-    wi['<UNK>'] = len(iw) + 1
-    wi['<NUM>'] = len(iw) + 2
+    wi['<NUM>'] = len(iw) + 1
+    wi['<UNK>'] = len(iw) + 2
     vectors['<PAD>'] = np.zeros((300,))
+    vectors['<NUM>'] = np.random.uniform(-0.1, 0.1, 300)
     vectors['<UNK>'] = np.zeros((300,))
-    vectors['<NUM>'] = np.zeros((300,))
 
     words = []
     # 根据语料得到缩小版的预训练参数
@@ -252,16 +252,20 @@ def get_pretraining_dict():
         words += word
         words += [char for char in word]
 
-    words = list(set(words))  # 语料中所有的词
-    chars = [list(word) if word not in ['<PAD>', '<NUM>', '<UNK>'] else '的' for word in words]
-    # chars = [list(word) for word in words]
-    from itertools import chain
-    chars = list(chain(*chars))
-    chars = list(set(chars))  # 语料中所有的字
-    chars.append('<PAD>')
-    chars.append('<UNK>')
-    chars.append('<NUM>')
-    tokens = list(set(chars + words))
+    # words = list(set(words))  # 语料中所有的词
+    words.append('<PAD>')
+    words.append('<NUM>')
+    words.append('<UNK>')
+    # 字
+    # chars = [list(word) if word not in ['<PAD>', '<NUM>', '<UNK>'] else '的' for word in words]
+    # from itertools import chain
+    # chars = list(chain(*chars))
+    # chars = list(set(chars))  # 语料中所有的字
+    # chars.append('<PAD>')
+    # chars.append('<UNK>')
+    # chars.append('<NUM>')
+    # tokens = list(set(chars + words))
+    tokens = list(set(words))
     # 取出token对应的信息
     # word2idx和vector matrix
     word2idx = {}
@@ -269,7 +273,12 @@ def get_pretraining_dict():
     index = 0
     for token in tokens:
         word2idx[token] = index
-        vec_matrix.append(vectors.get(token, vectors['<UNK>']))
+        try:
+            embedding = vectors[token]
+        except Exception:
+            embedding = np.array([vectors.get(word, vectors['<UNK>']) for word in token])
+            embedding = embedding.mean(axis=0)
+        vec_matrix.append(embedding)
         index += 1
     vocab.append(word2idx)
     vocab.append(vec_matrix)
@@ -304,23 +313,20 @@ def DuEE_process():
     dev_data = []
     test_data = []
     # 每种事件类型，都安装8：1：1划分，可使各类别更加均匀
-    event_count = 0
     for event_list in new_data:
-        if len(event_list) > 100:
-            event_count += 1
-            train_data_sub = event_list[:int(len(event_list) * 0.7)]
-            # 增强train_data
-            # if len(event_list) < 50:
-            #     # 三倍
-            #     # train_data_sub = train_data_sub * 3
-            #     train_data_sub = enhance(train_data_sub, 3)
-            # elif len(event_list) >= 50 and len(event_list) < 100:
-            #     # 两倍
-            #     train_data_sub = enhance(train_data_sub, 2)
-            #     # train_data_sub = train_data_sub * 2
-            train_data.extend(train_data_sub)
-            dev_data.extend(event_list[int(len(event_list) * 0.7):int(len(event_list) * 0.85)])
-            test_data.extend(event_list[int(len(event_list) * 0.85):])
+        train_data_sub = event_list[:int(len(event_list) * 0.8)]
+        # 增强train_data
+        # if len(event_list) < 50:
+        #     # 三倍
+        #     # train_data_sub = train_data_sub * 3
+        #     train_data_sub = enhance(train_data_sub, 3)
+        # elif len(event_list) >= 50 and len(event_list) < 100:
+        #     # 两倍
+        #     train_data_sub = enhance(train_data_sub, 2)
+        #     # train_data_sub = train_data_sub * 2
+        train_data.extend(train_data_sub)
+        dev_data.extend(event_list[int(len(event_list) * 0.8):int(len(event_list) * 0.9)])
+        test_data.extend(event_list[int(len(event_list) * 0.9):])
     random.shuffle(train_data)
     random.shuffle(dev_data)
     random.shuffle(test_data)
@@ -339,7 +345,6 @@ def DuEE_process():
             if line['id'] not in train_id:
                 f.write(str(line).replace('\n', '') + '\n')
         f.close()
-    print('event_count:', event_count)
 
 
 if __name__ == '__main__':

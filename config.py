@@ -24,14 +24,14 @@ HIDDEN_DIM = 300
 N_LAYERS = 1
 BI = True
 DROPOUT_RATE = 0.5
-FIX_EMDED = True
+FIX_EMDED = False
 ATTENTION = True
 
 # train config
 EPOCH = 30
-BATCH_SIZE = 256
+BATCH_SIZE = 128
 LR = 0.0001  # learning rate
 LR_DECAY_RATE = 0.9
-N_EVENT_CLASS = 65  # 事件本体中的事件类个数
+N_EVENT_CLASS = 32  # 事件本体中的事件类个数
 
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")

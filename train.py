@@ -111,8 +111,8 @@ if __name__ == '__main__':
     # optimizer = optim.Adam(model.parameters(), lr=config.LR, weight_decay=config.LR_DECAY_RATE)
 
     # 设置权重，解决正负样本不均衡的问题
-    weight = torch.from_numpy(np.array([0.1, 5])).float().to(config.DEVICE)
-    loss_func = torch.nn.CrossEntropyLoss(weight=weight)
+    # weight = torch.from_numpy(np.array([0.1, 5])).float().to(config.DEVICE)
+    # loss_func = torch.nn.CrossEntropyLoss(weight=weight)
     loss_func = torch.nn.CrossEntropyLoss()
 
     train_losses = []
