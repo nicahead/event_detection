@@ -1,5 +1,6 @@
 /.idea/
-/DUEE/
+/.vscode/
 /data/
-*.csv
+/__pycache__/
 /models/
+/DuEE/
