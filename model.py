@@ -72,10 +72,9 @@ class LSTMEncoder(nn.Module):
 
     def __init__(self):
         super(LSTMEncoder, self).__init__()
-        input_size = config.PROJ_DIM if config.PROJ else config.EMBED_DIM
         dropout = 0 if config.N_LAYERS == 1 else config.DROPOUT_RATE
         # BiLSTM
-        self.rnn = nn.LSTM(input_size=input_size, hidden_size=config.HIDDEN_DIM,
+        self.rnn = nn.LSTM(input_size=config.EMBED_DIM, hidden_size=config.HIDDEN_DIM,
                            num_layers=config.N_LAYERS, batch_first=True, dropout=dropout,
                            bidirectional=config.BI)
 
@@ -84,7 +83,7 @@ class LSTMEncoder(nn.Module):
         #                   num_layers=config.N_LAYERS, batch_first=True, dropout=dropout,
         #                   bidirectional=config.BI)
 
-        self.dropout = nn.Dropout(0.5)
+        # self.dropout = nn.Dropout(0.5)
         if config.BI:
             self.w_omega = nn.Parameter(torch.Tensor(
                 config.HIDDEN_DIM * 2, config.HIDDEN_DIM * 2))
@@ -121,7 +120,6 @@ class SiameseNetwork(nn.Module):
         self.vocab_size = embed_weight.shape[0]
         self.embed = nn.Embedding(self.vocab_size, config.EMBED_DIM)
         self.embed.weight.data.copy_(embed_weight)
-        self.projection = nn.Linear(config.EMBED_DIM, config.PROJ_DIM)
         # 使用bilstm编码
         self.encoder = LSTMEncoder()
 
@@ -130,29 +128,26 @@ class SiameseNetwork(nn.Module):
 
         # 使用TextRCNN编码
         # self.encoder = TextRCNNEncoder()
-
-        self.dropout = nn.Dropout(p=config.DROPOUT_RATE)
-        self.relu = nn.ReLU()
-        seq_in_size = 2 * config.HIDDEN_DIM
+        # seq_in_size = 2 * config.HIDDEN_DIM
+        seq_in_size = config.HIDDEN_DIM
         if config.BI:
             seq_in_size *= 2
         self.out = nn.Sequential(
-            nn.Linear(seq_in_size, 512),
-            self.relu,
-            self.dropout,
-            nn.Linear(512, 2))
+            nn.Linear(seq_in_size, 256),
+            nn.ReLU(),
+            nn.Dropout(p=config.DROPOUT_RATE),
+            nn.Linear(256, 2))
 
     def forward_once(self, input):
         embeded = self.embed(input)
         if config.FIX_EMDED:
             embeded = embeded.detach()
-        if config.PROJ:
-            embeded = self.relu(self.projection(embeded))
         encoded = self.encoder(embeded)
         return encoded
 
     def forward(self, input1, input2):
         premise = self.forward_once(input1)  # [batch_size,hidden_dim*2]
         hypothesis = self.forward_once(input2)
-        scores = self.out(torch.cat([premise, hypothesis], 1))  # [batch_size,2]
+        # scores = self.out(torch.cat([premise, hypothesis], 1))  # [batch_size,2]
+        scores = self.out(torch.sub(premise, hypothesis, alpha=1))  # [batch_size,2]
         return scores

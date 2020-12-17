@@ -101,7 +101,7 @@ def predict_sentence(sentence, model):
     (text, event, target) = batchManager.iter_batch(shuffle=True).__next__()
     text = torch.LongTensor(text).to(config.DEVICE)
     event = torch.LongTensor(event).to(config.DEVICE)
-
+    model.eval()
     output = model(text, event)
     predictions = torch.max(output, 1)[1]  # 预测值0/1
     return predictions

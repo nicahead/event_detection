@@ -7,6 +7,9 @@
 import json
 import collections
 import random
+import re
+
+import string
 
 import config
 import jieba
@@ -14,7 +17,8 @@ import pandas as pd
 import numpy as np
 import pickle
 
-from utils import is_number
+# from text_enhance import enhance
+from my_utils import is_number
 
 random.seed(2020)
 
@@ -84,10 +88,32 @@ def replace_digit(event_content):
     :return:
     """
     words = event_content.split(' ')
+    res = ''
     for word in words:
         if is_number(word):
-            event_content = event_content.replace(word, '<NUM>')
-    return event_content
+            word = '<NUM>'
+        res += word + ' '
+    return res
+
+
+def stopwordslist():
+    """
+    加载停用词表
+    """
+    stopwords = [line.strip() for line in open('cn_stopwords.txt', encoding='UTF-8').readlines()]
+    return stopwords
+
+
+def del_stopwords(words):
+    """
+    去停用词
+    """
+    stopwords = stopwordslist()
+    res = []
+    for word in words:
+        if word not in stopwords and word != '\n':
+            res.append(word)
+    return res
 
 
 def sentence_handle(sentence):
@@ -96,7 +122,11 @@ def sentence_handle(sentence):
     :param sentence:
     :return:
     """
-    newline = jieba.cut(sentence, cut_all=False)
+    # 去标点符号
+    rec = re.sub('[%s]' % re.escape(string.punctuation), '', sentence)
+    # 精确分词
+    words = jieba.lcut(rec)
+    newline = del_stopwords(words)
     str_out = ' '.join(newline).replace('，', '').replace('。', '').replace('?', '').replace('!', '') \
         .replace('“', '').replace('”', '').replace('：', '').replace('‘', '').replace('’', '').replace('-', '') \
         .replace('（', '').replace('）', '').replace('《', '').replace('》', '').replace('；', '').replace('.', '') \
@@ -104,6 +134,7 @@ def sentence_handle(sentence):
     str_out = replace_digit(str_out)
     str_out = ' '.join(str_out.split())  # 删除多余空格，确保两个词之间只有一个空格
     return str_out
+
 
 
 def get_corpus_dataset(name="train"):
@@ -212,6 +243,79 @@ def read_vectors(path, topn):  # read top n word vectors, i.e. top is 10000
     return vectors, iw, wi, dim
 
 
+# def get_pretraining_dict():
+#     """
+#     读取大的预训练词典，根据本语料中的词和字生成缩小版词典
+#     :return:
+#     """
+#     vocab = []
+#     vectors, iw, wi, dim = read_vectors('data/merge_sgns_bigram_char300.txt', 0)  # 所有字的词典
+#     wi['<PAD>'] = len(iw)
+#     wi['<NUM>'] = len(iw) + 1
+#     wi['<UNK>'] = len(iw) + 2
+#     vectors['<PAD>'] = np.zeros((300,))
+#     vectors['<NUM>'] = np.random.uniform(-0.1, 0.1, 300)
+#     vectors['<UNK>'] = np.zeros((300,))
+#
+#     words = []
+#     # 根据语料得到缩小版的预训练参数
+#     df1 = pd.read_csv('data/corpus_train.csv')
+#     for index, value in df1['text'].items():
+#         word = sentence_handle(value).split(' ')
+#         words += word
+#         words += [char for char in word]
+#
+#     df2 = pd.read_csv('data/corpus_dev.csv')
+#     for index, value in df2['text'].items():
+#         word = sentence_handle(value).split(' ')
+#         words += word
+#         words += [char for char in word]
+#
+#     df3 = pd.read_csv('data/corpus_test.csv')
+#     for index, value in df3['text'].items():
+#         word = sentence_handle(value).split(' ')
+#         words += word
+#         words += [char for char in word]
+#
+#     df4 = pd.read_csv('data/ontology.csv')
+#     for index, value in df4['text'].items():
+#         word = value.split(' ')
+#         words += word
+#         words += [char for char in word]
+#
+#     # words = list(set(words))  # 语料中所有的词
+#     words.append('<PAD>')
+#     words.append('<NUM>')
+#     words.append('<UNK>')
+#     # 字
+#     # chars = [list(word) if word not in ['<PAD>', '<NUM>', '<UNK>'] else '的' for word in words]
+#     # from itertools import chain
+#     # chars = list(chain(*chars))
+#     # chars = list(set(chars))  # 语料中所有的字
+#     # chars.append('<PAD>')
+#     # chars.append('<UNK>')
+#     # chars.append('<NUM>')
+#     # tokens = list(set(chars + words))
+#     tokens = list(set(words))
+#     # 取出token对应的信息
+#     # word2idx和vector matrix
+#     word2idx = {}
+#     vec_matrix = []
+#     index = 0
+#     for token in tokens:
+#         word2idx[token] = index
+#         try:
+#             embedding = vectors[token]
+#         except Exception:
+#             embedding = np.array([vectors.get(word, vectors['<UNK>']) for word in token])
+#             embedding = embedding.mean(axis=0)
+#         vec_matrix.append(embedding)
+#         index += 1
+#     vocab.append(word2idx)
+#     vocab.append(vec_matrix)
+#     # 写入字典
+#     with open('data/vocab.pkl', 'wb') as f:
+#         pickle.dump(vocab, f)
 def get_pretraining_dict():
     """
     读取大的预训练词典，根据本语料中的词和字生成缩小版词典
@@ -223,7 +327,7 @@ def get_pretraining_dict():
     wi['<NUM>'] = len(iw) + 1
     wi['<UNK>'] = len(iw) + 2
     vectors['<PAD>'] = np.zeros((300,))
-    vectors['<NUM>'] = np.random.uniform(-0.1, 0.1, 300)
+    vectors['<NUM>'] = np.zeros((300,))
     vectors['<UNK>'] = np.zeros((300,))
 
     words = []
@@ -232,39 +336,25 @@ def get_pretraining_dict():
     for index, value in df1['text'].items():
         word = sentence_handle(value).split(' ')
         words += word
-        words += [char for char in word]
 
     df2 = pd.read_csv('data/corpus_dev.csv')
     for index, value in df2['text'].items():
         word = sentence_handle(value).split(' ')
         words += word
-        words += [char for char in word]
 
     df3 = pd.read_csv('data/corpus_test.csv')
     for index, value in df3['text'].items():
         word = sentence_handle(value).split(' ')
         words += word
-        words += [char for char in word]
 
     df4 = pd.read_csv('data/ontology.csv')
     for index, value in df4['text'].items():
         word = value.split(' ')
         words += word
-        words += [char for char in word]
 
-    # words = list(set(words))  # 语料中所有的词
     words.append('<PAD>')
     words.append('<NUM>')
     words.append('<UNK>')
-    # 字
-    # chars = [list(word) if word not in ['<PAD>', '<NUM>', '<UNK>'] else '的' for word in words]
-    # from itertools import chain
-    # chars = list(chain(*chars))
-    # chars = list(set(chars))  # 语料中所有的字
-    # chars.append('<PAD>')
-    # chars.append('<UNK>')
-    # chars.append('<NUM>')
-    # tokens = list(set(chars + words))
     tokens = list(set(words))
     # 取出token对应的信息
     # word2idx和vector matrix
@@ -273,19 +363,13 @@ def get_pretraining_dict():
     index = 0
     for token in tokens:
         word2idx[token] = index
-        try:
-            embedding = vectors[token]
-        except Exception:
-            embedding = np.array([vectors.get(word, vectors['<UNK>']) for word in token])
-            embedding = embedding.mean(axis=0)
-        vec_matrix.append(embedding)
+        vec_matrix.append(vectors.get(token, vectors['<UNK>']))
         index += 1
     vocab.append(word2idx)
     vocab.append(vec_matrix)
     # 写入字典
     with open('data/vocab.pkl', 'wb') as f:
         pickle.dump(vocab, f)
-
 
 def DuEE_process():
     """
@@ -319,11 +403,11 @@ def DuEE_process():
         # if len(event_list) < 50:
         #     # 三倍
         #     # train_data_sub = train_data_sub * 3
-        #     train_data_sub = enhance(train_data_sub, 3)
+        #     train_data_sub = enhance(train_data_sub, 4)
         # elif len(event_list) >= 50 and len(event_list) < 100:
         #     # 两倍
-        #     train_data_sub = enhance(train_data_sub, 2)
-        #     # train_data_sub = train_data_sub * 2
+        #     train_data_sub = enhance(train_data_sub, 3)
+            # train_data_sub = train_data_sub * 2
         train_data.extend(train_data_sub)
         dev_data.extend(event_list[int(len(event_list) * 0.8):int(len(event_list) * 0.9)])
         test_data.extend(event_list[int(len(event_list) * 0.9):])

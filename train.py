@@ -104,16 +104,19 @@ if __name__ == '__main__':
 
     embed_matrix = prepare_data()
     model = SiameseNetwork(embed_matrix)
+    print(model)
 
     if config.DEVICE.type == 'cuda':
         model = model.cuda()
     optimizer = optim.Adam(model.parameters(), lr=config.LR)
-    # optimizer = optim.Adam(model.parameters(), lr=config.LR, weight_decay=config.LR_DECAY_RATE)
+    # optimizer = optim.Adam(model.parameters(), lr=config.LR, weight_decay=config.WEIGHT_DECAY)
+    # optimizer = optim.SGD(model.parameters(), lr=config.LR, momentum=0.9, weight_decay=config.WEIGHT_DECAY)
+    # optimizer = optim.RMSprop(model.parameters(), lr=config.LR, alpha=0.9, weight_decay=config.WEIGHT_DECAY)
 
-    # 设置权重，解决正负样本不均衡的问题
-    # weight = torch.from_numpy(np.array([0.1, 5])).float().to(config.DEVICE)
-    # loss_func = torch.nn.CrossEntropyLoss(weight=weight)
-    loss_func = torch.nn.CrossEntropyLoss()
+    # 设置权重，正负样本不均衡
+    weight = torch.from_numpy(np.array([0.1, 0.5])).float().to(config.DEVICE)
+    loss_func = torch.nn.CrossEntropyLoss(weight=weight)
+    # loss_func = torch.nn.CrossEntropyLoss()
 
     train_losses = []
     dev_losses = []
@@ -124,7 +127,12 @@ if __name__ == '__main__':
     begin_time = time()
     if not os.path.exists('models'):
         os.mkdir('models')
-    os.mkdir('models/temp')
+    if os.path.exists('models/temp'):
+        import shutil
+        shutil.rmtree('models/temp')
+        os.mkdir('models/temp')
+    else:
+        os.mkdir('models/temp')
     best_acc = 0
     best_f1 = 0
     best_acc_model_name = None
@@ -132,8 +140,8 @@ if __name__ == '__main__':
     best_f1_model = None
     best_f1_model_name = None
     for epoch in range(config.EPOCH):
-        if (epoch + 1) % 5 == 0:
-            adjust_learning_rate(optimizer, config.LR_DECAY_RATE)
+        # if (epoch + 1) % 5 == 0:
+        #     adjust_learning_rate(optimizer, config.LR_DECAY_RATE)
         print('=================================== epoch:{} ==================================='.format(epoch))
         train_loss = train(model, train_manager, loss_func, optimizer, config.DEVICE)
         dev_loss = dev(model, dev_manager, loss_func, config.DEVICE)
