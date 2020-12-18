@@ -7,7 +7,7 @@ import math
 import pickle
 import random
 
-import config
+from config import config
 
 
 class BatchManager(object):

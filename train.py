@@ -4,23 +4,22 @@
 # @File      :   train.py
 # @Desc      :
 from sklearn.metrics import classification_report
-
-import config
 import pickle
 import torch
 import numpy as np
 from time import *
 from tqdm import tqdm
 import copy
-
-from eval import evaluate, eval_graph
-from model import SiameseNetwork
 import torch.optim as optim
 import torch.nn.functional as F
 import pandas as pd
 import os
 
+from config import config
 from data_helper import BatchManager
+from eval import eval_graph, evaluate
+from loss import focal_loss
+from model import SiameseNetwork
 
 
 def prepare_data():
@@ -114,9 +113,10 @@ if __name__ == '__main__':
     # optimizer = optim.RMSprop(model.parameters(), lr=config.LR, alpha=0.9, weight_decay=config.WEIGHT_DECAY)
 
     # 设置权重，正负样本不均衡
-    weight = torch.from_numpy(np.array([0.1, 0.5])).float().to(config.DEVICE)
-    loss_func = torch.nn.CrossEntropyLoss(weight=weight)
+    # weight = torch.from_numpy(np.array([0.1, 0.5])).float().to(config.DEVICE)
+    # loss_func = torch.nn.CrossEntropyLoss(weight=weight)
     # loss_func = torch.nn.CrossEntropyLoss()
+    loss_func = focal_loss(alpha=[1, 20], gamma=2, num_classes=2)
 
     train_losses = []
     dev_losses = []
@@ -129,6 +129,7 @@ if __name__ == '__main__':
         os.mkdir('models')
     if os.path.exists('models/temp'):
         import shutil
+
         shutil.rmtree('models/temp')
         os.mkdir('models/temp')
     else:

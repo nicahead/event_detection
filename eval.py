@@ -5,12 +5,12 @@
 # @Desc      :
 import pandas as pd
 import torch
-import config
-from data_helper import BatchManager
-from data_prepare import get_event_dict, sentence_handle
 from matplotlib import pyplot as plt
 import pickle
-from model import SiameseNetwork
+
+from config import config
+from data_helper import BatchManager
+from data_prepare import sentence_handle, get_event_dict
 
 
 def evaluate_results(result, neg_id):

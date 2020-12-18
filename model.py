@@ -1,8 +1,9 @@
 import math
 import torch
 import torch.nn as nn
-import config
 import torch.nn.functional as F
+
+from config import config
 
 
 class TextCNNEncoder(nn.Module):
@@ -129,14 +130,14 @@ class SiameseNetwork(nn.Module):
         # 使用TextRCNN编码
         # self.encoder = TextRCNNEncoder()
         # seq_in_size = 2 * config.HIDDEN_DIM
-        seq_in_size = config.HIDDEN_DIM
+        seq_in_size = 3 * config.HIDDEN_DIM
         if config.BI:
             seq_in_size *= 2
         self.out = nn.Sequential(
-            nn.Linear(seq_in_size, 256),
+            nn.Linear(seq_in_size, 512),
             nn.ReLU(),
             nn.Dropout(p=config.DROPOUT_RATE),
-            nn.Linear(256, 2))
+            nn.Linear(512, 2))
 
     def forward_once(self, input):
         embeded = self.embed(input)
@@ -148,6 +149,7 @@ class SiameseNetwork(nn.Module):
     def forward(self, input1, input2):
         premise = self.forward_once(input1)  # [batch_size,hidden_dim*2]
         hypothesis = self.forward_once(input2)
-        # scores = self.out(torch.cat([premise, hypothesis], 1))  # [batch_size,2]
-        scores = self.out(torch.sub(premise, hypothesis, alpha=1))  # [batch_size,2]
+        cat = torch.cat([premise, hypothesis], 1)
+        sub = torch.abs(torch.sub(premise, hypothesis, alpha=1))
+        scores = self.out(torch.cat([cat, sub], 1))  # [batch_size,2]
         return scores

@@ -8,16 +8,12 @@ import json
 import collections
 import random
 import re
-
 import string
-
-import config
 import jieba
 import pandas as pd
 import numpy as np
 import pickle
 
-# from text_enhance import enhance
 from my_utils import is_number
 
 random.seed(2020)
@@ -242,80 +238,6 @@ def read_vectors(path, topn):  # read top n word vectors, i.e. top is 10000
         wi[w] = i
     return vectors, iw, wi, dim
 
-
-# def get_pretraining_dict():
-#     """
-#     读取大的预训练词典，根据本语料中的词和字生成缩小版词典
-#     :return:
-#     """
-#     vocab = []
-#     vectors, iw, wi, dim = read_vectors('data/merge_sgns_bigram_char300.txt', 0)  # 所有字的词典
-#     wi['<PAD>'] = len(iw)
-#     wi['<NUM>'] = len(iw) + 1
-#     wi['<UNK>'] = len(iw) + 2
-#     vectors['<PAD>'] = np.zeros((300,))
-#     vectors['<NUM>'] = np.random.uniform(-0.1, 0.1, 300)
-#     vectors['<UNK>'] = np.zeros((300,))
-#
-#     words = []
-#     # 根据语料得到缩小版的预训练参数
-#     df1 = pd.read_csv('data/corpus_train.csv')
-#     for index, value in df1['text'].items():
-#         word = sentence_handle(value).split(' ')
-#         words += word
-#         words += [char for char in word]
-#
-#     df2 = pd.read_csv('data/corpus_dev.csv')
-#     for index, value in df2['text'].items():
-#         word = sentence_handle(value).split(' ')
-#         words += word
-#         words += [char for char in word]
-#
-#     df3 = pd.read_csv('data/corpus_test.csv')
-#     for index, value in df3['text'].items():
-#         word = sentence_handle(value).split(' ')
-#         words += word
-#         words += [char for char in word]
-#
-#     df4 = pd.read_csv('data/ontology.csv')
-#     for index, value in df4['text'].items():
-#         word = value.split(' ')
-#         words += word
-#         words += [char for char in word]
-#
-#     # words = list(set(words))  # 语料中所有的词
-#     words.append('<PAD>')
-#     words.append('<NUM>')
-#     words.append('<UNK>')
-#     # 字
-#     # chars = [list(word) if word not in ['<PAD>', '<NUM>', '<UNK>'] else '的' for word in words]
-#     # from itertools import chain
-#     # chars = list(chain(*chars))
-#     # chars = list(set(chars))  # 语料中所有的字
-#     # chars.append('<PAD>')
-#     # chars.append('<UNK>')
-#     # chars.append('<NUM>')
-#     # tokens = list(set(chars + words))
-#     tokens = list(set(words))
-#     # 取出token对应的信息
-#     # word2idx和vector matrix
-#     word2idx = {}
-#     vec_matrix = []
-#     index = 0
-#     for token in tokens:
-#         word2idx[token] = index
-#         try:
-#             embedding = vectors[token]
-#         except Exception:
-#             embedding = np.array([vectors.get(word, vectors['<UNK>']) for word in token])
-#             embedding = embedding.mean(axis=0)
-#         vec_matrix.append(embedding)
-#         index += 1
-#     vocab.append(word2idx)
-#     vocab.append(vec_matrix)
-#     # 写入字典
-#     with open('data/vocab.pkl', 'wb') as f:
-#         pickle.dump(vocab, f)
 def get_pretraining_dict():
     """
     读取大的预训练词典，根据本语料中的词和字生成缩小版词典
@@ -372,10 +294,7 @@ def get_pretraining_dict():
         pickle.dump(vocab, f)
 
 def DuEE_process():
-    """
-    将data.json（train.json和dev.json合并得到）根据比例划分训练集、验证集、测试集，划分时按照每一类事件划分即分层抽样
-    :return:
-    """
+    #将data.json（train.json和dev.json合并得到）根据比例划分训练集、验证集、测试集，划分时按照每一类事件划分即分层抽样
     with open('DuEE/data.json', 'r', encoding='UTF-8') as f:
         data = f.readlines()
     data = [json.loads(item) for item in data]  # json对象列表
