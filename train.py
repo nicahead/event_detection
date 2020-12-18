@@ -15,6 +15,7 @@ import torch.nn.functional as F
 import pandas as pd
 import os
 
+from PGD import FGM
 from config import config
 from data_helper import BatchManager
 from eval import eval_graph, evaluate
@@ -39,17 +40,21 @@ def train(model, train_manager, loss_func, optimizer, device):
     y_true = []
     y_pred = []
     model.train()
+    fgm = FGM(model)
     with tqdm(total=train_manager.len_data, desc='train batch') as pbar:
         for (text, event, target) in train_manager.iter_batch(shuffle=True):
+            optimizer.zero_grad()
             text = torch.LongTensor(text).to(device)
             event = torch.LongTensor(event).to(device)
             target = torch.LongTensor(target).to(device)
             y_true.extend(target.tolist())
+            fgm.attack()  # 在embedding上添加对抗扰动
             output = model(text, event)
             y_pred.extend(torch.max(output, 1)[1].tolist())
             loss = loss_func(output, target)
-            optimizer.zero_grad()
+
             loss.backward()
+            fgm.restore()  # 恢复embedding参数
             optimizer.step()
             total_loss.append(loss.item())
             pbar.update(1)
