@@ -18,7 +18,8 @@ import os
 from PGD import FGM
 from config import config
 from data_helper import BatchManager
-from eval import eval_graph, evaluate
+from data_prepare import get_event_dict
+from eval import eval_graph, evaluate, evaluate_results
 from loss import focal_loss
 from model import SiameseNetwork
 
@@ -70,24 +71,38 @@ def dev(model, dev_manager, loss_func, device):
     total_loss = []
     y_true = []
     y_pred = []
+    res = []  # 多标签分类结果
     model.eval()
     with tqdm(total=dev_manager.len_data, desc='dev batch') as pbar:
         for (text, event, target) in dev_manager.iter_batch(shuffle=True):
             text = torch.LongTensor(text).to(device)
             event = torch.LongTensor(event).to(device)
             target = torch.LongTensor(target).to(device)
-            y_true.extend(target.tolist())
+            y_true.extend(target.tolist())  # 二分类label
+
             output = model(text, event)
-            y_pred.extend(torch.max(output, 1)[1].tolist())
+            pred = torch.max(output, 1)[1].tolist()
+            y_pred.extend(pred)  # 二分类预测值
+
             loss = loss_func(output, target)
             total_loss.append(loss.item())
+            # 评估多标签分类结果
+            pred = [i for i in range(len(pred)) if pred[i] == 1]  # 句子的事件类型，预测值
+            id2label, label2id = get_event_dict()
+            if len(pred) == 0:
+                pred = [label2id['NA']]
+            label = [i for i in range(len(target)) if target[i] == 1]  # 句子的事件类型，真实值
+            if len(label) == 0:
+                label = [label2id['NA']]
+            res.append((pred, label))
             pbar.update(1)
     ave_loss = sum(total_loss) / len(total_loss)
     # 打印二分类效果
     target_names = ['0', '1']
     print('dev binary classification:')
     print(classification_report(y_true, y_pred, target_names=target_names))
-    return ave_loss
+    acc, precision, recall, f1 = evaluate_results(res, label2id['NA'])
+    return ave_loss, acc, precision, recall, f1
 
 
 def adjust_learning_rate(optimizer, decay_rate=0.5):
@@ -104,7 +119,7 @@ if __name__ == '__main__':
 
     dev_df = pd.read_csv(config.DEV_DATA_PATH)
     dev_data = dev_df.values.tolist()
-    dev_manager = BatchManager(batch_size=config.BATCH_SIZE, data=dev_data)
+    dev_manager = BatchManager(batch_size=config.N_EVENT_CLASS, data=dev_data)
 
     embed_matrix = prepare_data()
     model = SiameseNetwork(embed_matrix)
@@ -150,8 +165,7 @@ if __name__ == '__main__':
         #     adjust_learning_rate(optimizer, config.LR_DECAY_RATE)
         print('=================================== epoch:{} ==================================='.format(epoch))
         train_loss = train(model, train_manager, loss_func, optimizer, config.DEVICE)
-        dev_loss = dev(model, dev_manager, loss_func, config.DEVICE)
-        acc, pre, rec, f1 = evaluate('dev', model, type='model')
+        dev_loss, acc, pre, rec, f1 = dev(model, dev_manager, loss_func, config.DEVICE)
         print('正确率：%.3f 准确率：%.3f 召回率：%.3f F1得分：%.3f' % (acc, pre, rec, f1))
         print('train loss：{}  dev loss：{}\n'.format(train_loss, dev_loss))
         train_losses.append(train_loss)  # 每个epoch的平均误差
