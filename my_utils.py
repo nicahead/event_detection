@@ -3,6 +3,8 @@
 # @Author    :   nicahead@gmail.com
 # @File      :   my_utils.py
 # @Desc      :
+from config import config
+
 
 def is_number(s):
     try:

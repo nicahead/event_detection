@@ -11,6 +11,8 @@ import pickle
 from config import config
 from data_helper import BatchManager
 from data_prepare import sentence_handle, get_event_dict
+from model import SiameseNetwork
+from train import prepare_data
 
 
 def evaluate_results(result, neg_id):
@@ -72,9 +74,11 @@ def evaluate(name, model, type='model'):
             pred = [label2id['NA']]
         label = label.split(' ')
         label = [label2id[item] for item in label]  # 句子的事件类型，真实值
+        if len(label) == 0:
+            label = [label2id['NA']]
         res.append((pred, label))
-        # 打印不正确的预测结果
-        if name == 'test' and pred != label:
+        # 打印预测结果
+        if name == 'test':
             gold_ans = ','.join([id2label[x] for x in label])
             pred_ans = ','.join([id2label[x] for x in pred])
             print('Sample %d: [sentence=%s] \n\t [label=%s], [pred=%s]\n' % (index, text, gold_ans, pred_ans))
@@ -97,7 +101,7 @@ def predict_sentence(sentence, model):
     for event_text in df['text']:
         triple = [text, event_text, '']
         res.append(triple)
-    batchManager = BatchManager(config.N_EVENT_CLASS, res)
+    batchManager = BatchManager(config.N_EVENT_CLASS, res, mode='test')
     (text, event, target) = batchManager.iter_batch(shuffle=True).__next__()
     text = torch.LongTensor(text).to(config.DEVICE)
     event = torch.LongTensor(event).to(config.DEVICE)
@@ -165,19 +169,19 @@ def compare_graph(path1, name1, path2, name2):
     plt.show()
 
 
-if __name__ == '__main__':
+# if __name__ == '__main__':
     # evaluate('models/v2/epoch29-loss0.19202018300555243-acc0.8843977364591754-f0.8956196392103724', type='path')
 
-    model = torch.load('models/temp/epoch28-loss0.03184091075317352-acc0.8987068965517241-f0.9025969026000221')
-    if config.DEVICE.type == 'cuda':
-        model = model.cuda()
-    while 1:
-        sentence = input()
-        # sentence = '乔丹2010年花2.75亿买下黄蜂队，他经营了9年共赚了多少钱呢？'
-        pred = predict_sentence(sentence, model)
-        id2label, label2id = get_event_dict()
-        pred = [id2label[i] for i in range(len(pred)) if pred[i] == 1]
-        print(pred)
+    # model = torch.load('models/temp/epoch28-loss0.03184091075317352-acc0.8987068965517241-f0.9025969026000221')
+    # if config.DEVICE.type == 'cuda':
+    #     model = model.cuda()
+    # while 1:
+    #     sentence = input()
+    #     # sentence = '乔丹2010年花2.75亿买下黄蜂队，他经营了9年共赚了多少钱呢？'
+    #     pred = predict_sentence(sentence, model)
+    #     id2label, label2id = get_event_dict()
+    #     pred = [id2label[i] for i in range(len(pred)) if pred[i] == 1]
+    #     print(pred)
 
     # compare_graph('models/v6/result.pkl', 'no weighted', 'models/v4/result.pkl', 'weighted')
 
@@ -186,3 +190,5 @@ if __name__ == '__main__':
     #                                      type='path')
     # print('best_acc_model:')
     # print('accuracy：%.3f precision：%.3f recall：%.3f F1：%.3f' % (acc_1, pre_1, rec_1, f1_1))
+    # 获得 early stopping 时的模型参数
+

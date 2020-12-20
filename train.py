@@ -11,7 +11,7 @@ from time import *
 from tqdm import tqdm
 import copy
 import torch.optim as optim
-import torch.nn.functional as F
+from torch.optim import lr_scheduler
 import pandas as pd
 import os
 
@@ -22,7 +22,6 @@ from data_prepare import get_event_dict
 from eval import eval_graph, evaluate, evaluate_results
 from loss import focal_loss
 from model import SiameseNetwork
-
 
 def prepare_data():
     # 加载预训练词典
@@ -104,22 +103,16 @@ def dev(model, dev_manager, loss_func, device):
     acc, precision, recall, f1 = evaluate_results(res, label2id['NA'])
     return ave_loss, acc, precision, recall, f1
 
-
-def adjust_learning_rate(optimizer, decay_rate=0.5):
-    for param_group in optimizer.param_groups:
-        param_group['lr'] = param_group['lr'] * decay_rate
-
-
 if __name__ == '__main__':
     # -------数据准备---------
     # 初始化数据，从本地读取
     train_df = pd.read_csv(config.TRAIN_DATA_PATH)
     train_data = train_df.values.tolist()
-    train_manager = BatchManager(batch_size=config.BATCH_SIZE, data=train_data)
+    train_manager = BatchManager(batch_size=config.BATCH_SIZE, data=train_data, mode='train')
 
     dev_df = pd.read_csv(config.DEV_DATA_PATH)
     dev_data = dev_df.values.tolist()
-    dev_manager = BatchManager(batch_size=config.N_EVENT_CLASS, data=dev_data)
+    dev_manager = BatchManager(batch_size=config.N_EVENT_CLASS, data=dev_data, mode='dev')
 
     embed_matrix = prepare_data()
     model = SiameseNetwork(embed_matrix)
@@ -127,16 +120,19 @@ if __name__ == '__main__':
 
     if config.DEVICE.type == 'cuda':
         model = model.cuda()
-    optimizer = optim.Adam(model.parameters(), lr=config.LR)
-    # optimizer = optim.Adam(model.parameters(), lr=config.LR, weight_decay=config.WEIGHT_DECAY)
+    # optimizer = optim.Adam(model.parameters(), lr=config.LR)
+    optimizer = optim.Adam(model.parameters(), lr=config.LR, weight_decay=config.WEIGHT_DECAY)
+    # 动态调整学习率
+    scheduler = lr_scheduler.ReduceLROnPlateau(optimizer, mode='max', factor=config.LR_DECAY_RATE, patience=3, verbose=True, threshold=0.01, threshold_mode='abs', cooldown=0, min_lr=0.000001, eps=1e-08)
     # optimizer = optim.SGD(model.parameters(), lr=config.LR, momentum=0.9, weight_decay=config.WEIGHT_DECAY)
     # optimizer = optim.RMSprop(model.parameters(), lr=config.LR, alpha=0.9, weight_decay=config.WEIGHT_DECAY)
+
 
     # 设置权重，正负样本不均衡
     # weight = torch.from_numpy(np.array([0.1, 0.5])).float().to(config.DEVICE)
     # loss_func = torch.nn.CrossEntropyLoss(weight=weight)
     # loss_func = torch.nn.CrossEntropyLoss()
-    loss_func = focal_loss(alpha=[1, 20], gamma=2, num_classes=2)
+    loss_func = focal_loss(alpha=[1, 50], gamma=2, num_classes=2)
 
     train_losses = []
     dev_losses = []
@@ -159,10 +155,9 @@ if __name__ == '__main__':
     best_acc_model_name = None
     best_acc_model = None
     best_f1_model = None
-    best_f1_model_name = None
+    # 训练模型，直到 epoch == config.EPOCH 或者触发 early_stopping 结束训练
+    count = 0 # 记录f1值没有增加的epoch个数
     for epoch in range(config.EPOCH):
-        # if (epoch + 1) % 5 == 0:
-        #     adjust_learning_rate(optimizer, config.LR_DECAY_RATE)
         print('=================================== epoch:{} ==================================='.format(epoch))
         train_loss = train(model, train_manager, loss_func, optimizer, config.DEVICE)
         dev_loss, acc, pre, rec, f1 = dev(model, dev_manager, loss_func, config.DEVICE)
@@ -182,6 +177,14 @@ if __name__ == '__main__':
             best_f1 = f1
             best_f1_model_name = 'models/temp/epoch{}-loss{}-acc{}-f{}'.format(epoch, dev_loss, acc, f1)
             best_f1_model = copy.deepcopy(model)
+            count = 0
+        else:
+          count += 1
+        scheduler.step(f1)
+        # 若满足 early stopping 要求
+        # if count == config.N_EARLY_STOP:
+        #   print("Early stopping")
+        #   break
     torch.save(best_f1_model, best_f1_model_name)
     torch.save(best_acc_model, best_acc_model_name)
     end_time = time()
@@ -195,9 +198,9 @@ if __name__ == '__main__':
     eval_graph('models/temp/result.pkl')
 
     # 使用保存的两个模型在测试集上计算指标
-    acc_1, pre1, rec_1, f1_1 = evaluate('test', best_acc_model, type='model')
-    print('\nbest_acc_model:')
-    print('正确率：%.3f 准确率：%.3f 召回率：%.3f F1得分：%.3f' % (acc_1, pre1, rec_1, f1_1))
-    acc_2, pre2, rec_2, f1_2 = evaluate('test', best_f1_model, type='model')
-    print('\nbest_f1_model:')
-    print('正确率：%.3f 准确率：%.3f 召回率：%.3f F1得分：%.3f' % (acc_2, pre2, rec_2, f1_2))
+    # acc_1, pre1, rec_1, f1_1 = evaluate('test', best_acc_model, type='model')
+    # print('\nbest_acc_model:')
+    # print('正确率：%.3f 准确率：%.3f 召回率：%.3f F1得分：%.3f' % (acc_1, pre1, rec_1, f1_1))
+    # acc_2, pre2, rec_2, f1_2 = evaluate('test', best_f1_model, type='model')
+    # print('\nbest_f1_model:')
+    # print('正确率：%.3f 准确率：%.3f 召回率：%.3f F1得分：%.3f' % (acc_2, pre2, rec_2, f1_2))

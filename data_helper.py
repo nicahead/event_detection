@@ -11,17 +11,22 @@ from config import config
 
 
 class BatchManager(object):
-    def __init__(self, batch_size, data=None):
-        self.batch_data = self.sort_and_pad(data, batch_size)
+    def __init__(self, batch_size, data=None, mode='train'):
+        self.batch_data = self.sort_and_pad(data, batch_size, mode)
         self.len_data = len(self.batch_data)
+        self.mode = mode
 
     # 构造batch数据
-    def sort_and_pad(self, data, batch_size):
+    def sort_and_pad(self, data, batch_size, mode):
         with open(config.VOCAB_PATH, 'rb') as f:
             datalist = pickle.load(f)
         word2idx = datalist[0]
         num_batch = int(math.ceil(len(data) / batch_size))  # 总共有多少个batch
-        sorted_data = sorted(data, key=lambda x: max(len(x[0].split(' ')), len(x[1].split(' '))))  # 按照句子中词的个数排序
+        if mode == 'train':
+            sorted_data = sorted(data, key=lambda x: max(len(x[0].split(' ')), len(x[1].split(' '))))  # 按照句子中词的个数排序
+        # 验证集测试集不改变数据顺序
+        else:
+            sorted_data = data
         batch_data = list()
         for i in range(num_batch):
             batch_data.append(self.pad_data(sorted_data[i * int(batch_size): (i + 1) * int(batch_size)], word2idx))

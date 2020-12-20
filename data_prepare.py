@@ -18,7 +18,6 @@ from my_utils import is_number
 
 random.seed(2020)
 
-
 def event_count():
     """
     统计原语料中各事件类型的数量
@@ -132,7 +131,6 @@ def sentence_handle(sentence):
     return str_out
 
 
-
 def get_corpus_dataset(name="train"):
     """
     根据语料，构造text/label的数据集
@@ -151,7 +149,7 @@ def get_corpus_dataset(name="train"):
         for event in item['event_list']:
             # 只将事件本体中定义过事件类型的作为数据集，且如果一个句子中包含重复的事件，只保留一个
             if event['event_type'] in id2label and event['event_type'] not in info['label']:
-            # if event['event_type'] not in info['label']:
+                # if event['event_type'] not in info['label']:
                 info['text'] = item['text'].replace('\n', '')
                 info['label'] += event['event_type'] + ' '
         if 'text' in info.keys():
@@ -238,6 +236,7 @@ def read_vectors(path, topn):  # read top n word vectors, i.e. top is 10000
         wi[w] = i
     return vectors, iw, wi, dim
 
+
 def get_pretraining_dict():
     """
     读取大的预训练词典，根据本语料中的词和字生成缩小版词典
@@ -293,9 +292,10 @@ def get_pretraining_dict():
     with open('data/vocab.pkl', 'wb') as f:
         pickle.dump(vocab, f)
 
+
 def DuEE_process():
-    #将data.json（train.json和dev.json合并得到）根据比例划分训练集、验证集、测试集，划分时按照每一类事件划分即分层抽样
-    with open('DuEE/data.json', 'r', encoding='UTF-8') as f:
+    # 将data.json（train.json和dev.json合并得到）根据比例划分训练集、验证集、测试集，划分时按照每一类事件划分即分层抽样
+    with open('data/data.json', 'r', encoding='UTF-8') as f:
         data = f.readlines()
     data = [json.loads(item) for item in data]  # json对象列表
     id2label, label2id = get_event_dict()
@@ -326,7 +326,7 @@ def DuEE_process():
         # elif len(event_list) >= 50 and len(event_list) < 100:
         #     # 两倍
         #     train_data_sub = enhance(train_data_sub, 3)
-            # train_data_sub = train_data_sub * 2
+        # train_data_sub = train_data_sub * 2
         train_data.extend(train_data_sub)
         dev_data.extend(event_list[int(len(event_list) * 0.8):int(len(event_list) * 0.9)])
         test_data.extend(event_list[int(len(event_list) * 0.9):])
@@ -348,19 +348,3 @@ def DuEE_process():
             if line['id'] not in train_id:
                 f.write(str(line).replace('\n', '') + '\n')
         f.close()
-
-
-if __name__ == '__main__':
-    # event_count()
-
-    DuEE_process()  # 将原始语料的train和dev文件合并，然后分层抽样得到新的train.json、dev.json、test.json
-    get_ontology_dataset()  # 提取事件本体中的句子和label，得到ontology.csv
-
-    # 提取语料（train.json）中的句子和label，得到corpus_train.csv、、、
-    get_corpus_dataset("train")
-    get_corpus_dataset("dev")  # 提取语料中的句子和label
-    get_corpus_dataset("test")  # 提取语料中的句子和label
-    get_pretraining_dict()  # 根据以上三个文件中的句子得到缩小版的词典
-    get_dataset("train")  # 获得三元组数据集
-    get_dataset("dev")  # 获得三元组数据集
-    get_dataset("test")  # 获得三元组数据集
