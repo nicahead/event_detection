@@ -149,8 +149,8 @@ if __name__ == '__main__':
     if config.DEVICE.type == 'cuda':
         model = model.cuda()
     # optimizer = optim.Adam(model.parameters(), lr=config.LR)
-    # optimizer = optim.Adam(model.parameters(), lr=config.LR, weight_decay=config.WEIGHT_DECAY)
-    optimizer = optim.Adam(model.parameters(), lr=config.LR)
+    optimizer = optim.Adam(model.parameters(), lr=config.LR, weight_decay=config.WEIGHT_DECAY)
+    # optimizer = optim.Adam(model.parameters(), lr=config.LR)
     # 动态调整学习率
     # scheduler = lr_scheduler.ReduceLROnPlateau(optimizer, mode='max', factor=config.LR_DECAY_RATE, patience=3,
     #                                            verbose=True, threshold=0.01, threshold_mode='abs', cooldown=0,

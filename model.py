@@ -121,10 +121,10 @@ class SiameseNetwork(nn.Module):
         self.embed = nn.Embedding(self.vocab_size, config.EMBED_DIM)
         self.embed.weight.data.copy_(embed_weight)
         # 使用bilstm编码
-        # self.encoder = LSTMEncoder()
+        self.encoder = LSTMEncoder()
 
         # 使用TextCNN编码
-        self.encoder = TextCNNEncoder(config.HIDDEN_DIM * 2)
+        # self.encoder = TextCNNEncoder(config.HIDDEN_DIM * 2)
 
         # 使用TextRCNN编码
         # self.encoder = TextRCNNEncoder()

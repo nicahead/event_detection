@@ -17,6 +17,7 @@ import pickle
 from my_utils import is_number
 
 random.seed(2020)
+np.random.seed(2020)
 
 
 def event_count():
@@ -247,10 +248,10 @@ def get_pretraining_dict():
     vectors, iw, wi, dim = read_vectors('data/merge_sgns_bigram_char300.txt', 0)  # 所有字的词典
     wi['<PAD>'] = len(iw)
     wi['<NUM>'] = len(iw) + 1
-    wi['<UNK>'] = len(iw) + 2
+    # wi['<UNK>'] = len(iw) + 2
     vectors['<PAD>'] = np.zeros((300,))
-    vectors['<NUM>'] = np.zeros((300,))
-    vectors['<UNK>'] = np.zeros((300,))
+    vectors['<NUM>'] = np.random.uniform(0, 1, 300)
+    # vectors['<UNK>'] = np.zeros((300,))
 
     words = []
     # 根据语料得到缩小版的预训练参数
@@ -276,7 +277,7 @@ def get_pretraining_dict():
 
     words.append('<PAD>')
     words.append('<NUM>')
-    words.append('<UNK>')
+    # words.append('<UNK>')
     tokens = list(set(words))
     # 取出token对应的信息
     # word2idx和vector matrix
@@ -285,7 +286,12 @@ def get_pretraining_dict():
     index = 0
     for token in tokens:
         word2idx[token] = index
-        vec_matrix.append(vectors.get(token, vectors['<UNK>']))
+        # vec_matrix.append(vectors.get(token, vectors['<UNK>']))
+        try:
+            vec = vectors[token]
+        except Exception:
+            vec = np.mean(np.array([vectors.get(char, vectors['<PAD>']) for char in token]), axis=0)
+        vec_matrix.append(vec)
         index += 1
     vocab.append(word2idx)
     vocab.append(vec_matrix)
