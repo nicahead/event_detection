@@ -4,6 +4,7 @@ import torch.nn.functional as F
 
 from config import config
 
+
 class TextCNNEncoder(nn.Module):
     """
     使用TextCNN对输入进行编码
@@ -11,7 +12,7 @@ class TextCNNEncoder(nn.Module):
 
     def __init__(self, output_size):
         super(TextCNNEncoder, self).__init__()
-        input_size = config.PROJ_DIM if config.PROJ else config.EMBED_DIM
+        input_size = config.EMBED_DIM
         D = input_size  # 嵌入维度
         # C = output_size  # 输出维度
         Ci = 1  # 通道数
@@ -19,7 +20,7 @@ class TextCNNEncoder(nn.Module):
         Ks = [3, 4, 5]  # 卷积核的size为(K,input_size)
         self.convs1 = nn.ModuleList(
             [nn.Conv2d(in_channels=Ci, out_channels=Co, kernel_size=(K, D), padding=(1, 0)) for K in Ks])
-        self.dropout = nn.Dropout(0.8)
+        self.dropout = nn.Dropout(0.5)
 
     def conv_and_pool(self, x, conv):
         x = F.relu(conv(x)).squeeze(3)  # (N, Co, W)
@@ -120,10 +121,10 @@ class SiameseNetwork(nn.Module):
         self.embed = nn.Embedding(self.vocab_size, config.EMBED_DIM)
         self.embed.weight.data.copy_(embed_weight)
         # 使用bilstm编码
-        self.encoder = LSTMEncoder()
+        # self.encoder = LSTMEncoder()
 
         # 使用TextCNN编码
-        # self.encoder = TextCNNEncoder(config.HIDDEN_DIM * 2)
+        self.encoder = TextCNNEncoder(config.HIDDEN_DIM * 2)
 
         # 使用TextRCNN编码
         # self.encoder = TextRCNNEncoder()

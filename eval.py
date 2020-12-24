@@ -11,8 +11,6 @@ import pickle
 from config import config
 from data_helper import BatchManager
 from data_prepare import sentence_handle, get_event_dict
-from model import SiameseNetwork
-from train import prepare_data
 
 
 def evaluate_results(result, neg_id):
@@ -185,10 +183,10 @@ def compare_graph(path1, name1, path2, name2):
 
     # compare_graph('models/v6/result.pkl', 'no weighted', 'models/v4/result.pkl', 'weighted')
 
-    # acc_1, pre_1, rec_1, f1_1 = evaluate('dev',
-    #                                      'models/v5/epoch29-loss0.03285682125803787-acc0.9477000630119723-f0.9385330413886976',
-    #                                      type='path')
-    # print('best_acc_model:')
-    # print('accuracy：%.3f precision：%.3f recall：%.3f F1：%.3f' % (acc_1, pre_1, rec_1, f1_1))
+    acc_1, pre_1, rec_1, f1_1 = evaluate('dev',
+                                         'models/temp/epoch15-loss0.007570904709869469-acc0.8056322473771397-f0.8497374149926842',
+                                         type='path')
+    print('best_acc_model:')
+    print('accuracy：%.3f precision：%.3f recall：%.3f F1：%.3f' % (acc_1, pre_1, rec_1, f1_1))
     # 获得 early stopping 时的模型参数
 

@@ -23,6 +23,22 @@ from eval import eval_graph, evaluate, evaluate_results
 from loss import focal_loss
 from model import SiameseNetwork
 
+import sys
+
+
+class Logger(object):
+    def __init__(self, filename='default.log', stream=sys.stdout):
+        self.terminal = stream
+        self.log = open(filename, 'a')
+
+    def write(self, message):
+        self.terminal.write(message)
+        self.log.write(message)
+
+    def flush(self):
+        pass
+
+
 def prepare_data():
     # 加载预训练词典
     with open(config.VOCAB_PATH, 'rb') as f:
@@ -103,7 +119,20 @@ def dev(model, dev_manager, loss_func, device):
     acc, precision, recall, f1 = evaluate_results(res, label2id['NA'])
     return ave_loss, acc, precision, recall, f1
 
+
 if __name__ == '__main__':
+    if not os.path.exists('models'):
+        os.mkdir('models')
+    if os.path.exists('models/temp'):
+        import shutil
+
+        shutil.rmtree('models/temp')
+        os.mkdir('models/temp')
+    else:
+        os.mkdir('models/temp')
+    sys.stdout = Logger('models/temp/output', sys.stdout)
+    sys.stderr = Logger('models/temp/output', sys.stderr)
+
     # -------数据准备---------
     # 初始化数据，从本地读取
     train_df = pd.read_csv(config.TRAIN_DATA_PATH)
@@ -116,17 +145,18 @@ if __name__ == '__main__':
 
     embed_matrix = prepare_data()
     model = SiameseNetwork(embed_matrix)
-    print(model)
 
     if config.DEVICE.type == 'cuda':
         model = model.cuda()
     # optimizer = optim.Adam(model.parameters(), lr=config.LR)
-    optimizer = optim.Adam(model.parameters(), lr=config.LR, weight_decay=config.WEIGHT_DECAY)
+    # optimizer = optim.Adam(model.parameters(), lr=config.LR, weight_decay=config.WEIGHT_DECAY)
+    optimizer = optim.Adam(model.parameters(), lr=config.LR)
     # 动态调整学习率
-    scheduler = lr_scheduler.ReduceLROnPlateau(optimizer, mode='max', factor=config.LR_DECAY_RATE, patience=3, verbose=True, threshold=0.01, threshold_mode='abs', cooldown=0, min_lr=0.000001, eps=1e-08)
+    # scheduler = lr_scheduler.ReduceLROnPlateau(optimizer, mode='max', factor=config.LR_DECAY_RATE, patience=3,
+    #                                            verbose=True, threshold=0.01, threshold_mode='abs', cooldown=0,
+    #                                            min_lr=0.000001, eps=1e-08)
     # optimizer = optim.SGD(model.parameters(), lr=config.LR, momentum=0.9, weight_decay=config.WEIGHT_DECAY)
     # optimizer = optim.RMSprop(model.parameters(), lr=config.LR, alpha=0.9, weight_decay=config.WEIGHT_DECAY)
-
 
     # 设置权重，正负样本不均衡
     # weight = torch.from_numpy(np.array([0.1, 0.5])).float().to(config.DEVICE)
@@ -141,22 +171,14 @@ if __name__ == '__main__':
     f1_ls = []
 
     begin_time = time()
-    if not os.path.exists('models'):
-        os.mkdir('models')
-    if os.path.exists('models/temp'):
-        import shutil
 
-        shutil.rmtree('models/temp')
-        os.mkdir('models/temp')
-    else:
-        os.mkdir('models/temp')
     best_acc = 0
     best_f1 = 0
     best_acc_model_name = None
     best_acc_model = None
     best_f1_model = None
     # 训练模型，直到 epoch == config.EPOCH 或者触发 early_stopping 结束训练
-    count = 0 # 记录f1值没有增加的epoch个数
+    count = 0  # 记录f1值没有增加的epoch个数
     for epoch in range(config.EPOCH):
         print('=================================== epoch:{} ==================================='.format(epoch))
         train_loss = train(model, train_manager, loss_func, optimizer, config.DEVICE)
@@ -179,8 +201,8 @@ if __name__ == '__main__':
             best_f1_model = copy.deepcopy(model)
             count = 0
         else:
-          count += 1
-        scheduler.step(f1)
+            count += 1
+        # scheduler.step(f1)
         # 若满足 early stopping 要求
         # if count == config.N_EARLY_STOP:
         #   print("Early stopping")
@@ -198,9 +220,12 @@ if __name__ == '__main__':
     eval_graph('models/temp/result.pkl')
 
     # 使用保存的两个模型在测试集上计算指标
-    # acc_1, pre1, rec_1, f1_1 = evaluate('test', best_acc_model, type='model')
-    # print('\nbest_acc_model:')
-    # print('正确率：%.3f 准确率：%.3f 召回率：%.3f F1得分：%.3f' % (acc_1, pre1, rec_1, f1_1))
-    # acc_2, pre2, rec_2, f1_2 = evaluate('test', best_f1_model, type='model')
-    # print('\nbest_f1_model:')
-    # print('正确率：%.3f 准确率：%.3f 召回率：%.3f F1得分：%.3f' % (acc_2, pre2, rec_2, f1_2))
+    acc_1, pre1, rec_1, f1_1 = evaluate('test', best_acc_model, type='model')
+    print('\nbest_acc_model:')
+    print('正确率：%.3f 准确率：%.3f 召回率：%.3f F1得分：%.3f' % (acc_1, pre1, rec_1, f1_1))
+    acc_2, pre2, rec_2, f1_2 = evaluate('test', best_f1_model, type='model')
+    print('\nbest_f1_model:')
+    print('正确率：%.3f 准确率：%.3f 召回率：%.3f F1得分：%.3f' % (acc_2, pre2, rec_2, f1_2))
+
+    print(config.__dict__.items())
+    print(model)

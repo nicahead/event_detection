@@ -18,6 +18,7 @@ from my_utils import is_number
 
 random.seed(2020)
 
+
 def event_count():
     """
     统计原语料中各事件类型的数量
@@ -348,3 +349,59 @@ def DuEE_process():
             if line['id'] not in train_id:
                 f.write(str(line).replace('\n', '') + '\n')
         f.close()
+
+
+def text_enhance():
+    def get_sen_pair(list, num):
+        text = []
+        event = []
+        label = []
+        for i in range(len(list)):
+            for j in range(i + 1, len(list)):
+                if len(text) >= num:
+                    return text, event, label
+                text.append(sentence_handle(list[i]['text']))
+                event.append(sentence_handle(list[j]['text']))
+                label.append(1)
+        return text, event, label
+
+    id2label, label2id = get_event_dict()
+    data = [[] for i in range(len(id2label))]
+    df = pd.read_csv('data/corpus_train.csv')
+    # 数据分类
+    for row in zip(df['text'], df['label']):
+        labels = row[1].split(' ')
+        if len(labels) == 1:
+            data[label2id[labels[0]]].append({'label': row[1], 'text': row[0]})
+    res_text = []
+    res_event = []
+    res_label = []
+    # 每个类别分别扩充
+    for i in range(len(id2label)):
+        if len(data[i]) < 200:
+            text, event, label = get_sen_pair(data[i], 200)
+        elif len(data[i]) >= 200 and len(data[i]) < 500:
+            text, event, label = get_sen_pair(data[i], 100)
+        else:
+            text, event, label = get_sen_pair(data[i], 50)
+        res_text += text
+        res_event += event
+        res_label += label
+    data = {'text': res_text, 'event': res_event, 'label': res_label}
+    dataframe = pd.DataFrame(data)
+    dataframe.to_csv("./data/train_enhance.csv", index=False, sep=',')
+
+
+if __name__ == '__main__':
+    DuEE_process()  # 将原始语料的train和dev文件合并，然后分层抽样得到新的train.json、dev.json、test.json
+    get_ontology_dataset()  # 提取事件本体中的句子和label，得到ontology.csv
+
+    # 提取语料（train.json）中的句子和label，得到corpus_train.csv、、、
+    get_corpus_dataset("train")
+    get_corpus_dataset("dev")  # 提取语料中的句子和label
+    get_corpus_dataset("test")  # 提取语料中的句子和label
+    get_pretraining_dict()  # 根据以上三个文件中的句子得到缩小版的词典
+    get_dataset("train")  # 获得三元组数据集
+    get_dataset("dev")  # 获得三元组数据集
+    get_dataset("test")  # 获得三元组数据集
+    # text_enhance()

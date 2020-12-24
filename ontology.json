@@ -44,7 +44,7 @@
 {"name":"入狱","parent":"司法行为","object":["法院","入狱者","刑期"],"action":[],"time":[],"environment":[],"assert":[],"language":["入狱","判刑"]}
 {"name":"约谈","parent":"司法行为","object":["约谈对象","约谈发起方"],"action":[],"time":[],"environment":[],"assert":[],"language":["约谈"]}
 {"name":"爆炸","parent":"灾害/意外","object":["死亡人数","受伤人数"],"action":[],"time":[],"environment":[],"assert":[],"language":["爆炸"]}
-{"name":"车祸","parent":"灾害/意外","object":["警察","司机","死亡人数","受伤人数"],"action":[],"time":[],"environment":[],"assert":[],"language":["车祸","撞车"]}
+{"name":"车祸","parent":"灾害/意外","object":["警察","司机","死亡人数","受伤人数"],"action":[],"time":[],"environment":[],"assert":[],"language":["车祸","撞车","交通事故"]}
 {"name":"地震","parent":"灾害/意外","object":["震级","震源深度","震中","死亡人数","受伤人数"],"action":[],"time":[],"environment":[],"assert":[],"language":["地震"]}
 {"name":"洪灾","parent":"灾害/意外","object":["死亡人数","受伤人数"],"action":["降雨"],"time":[],"environment":[],"assert":[],"language":["洪灾","洪涝"]}
 {"name":"起火","parent":"灾害/意外","object":["死亡人数","受伤人数"],"action":[],"time":[],"environment":[],"assert":[],"language":["起火","着火"]}

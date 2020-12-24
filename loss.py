@@ -42,7 +42,7 @@ class focal_loss(nn.Module):
         self.alpha = self.alpha.to(preds.device)
         preds_softmax = F.softmax(preds,
                                   dim=1)  # 这里并没有直接使用log_softmax, 因为后面会用到softmax的结果(当然你也可以使用log_softmax,然后进行exp操作)
-        preds_logsoft = torch.log(preds_softmax)
+        preds_logsoft = torch.log(preds_softmax + 1e-10)
         preds_softmax = preds_softmax.gather(1, labels.view(-1, 1))  # 这部分实现nll_loss ( crossempty = log_softmax + nll )
         preds_logsoft = preds_logsoft.gather(1, labels.view(-1, 1))
         self.alpha = self.alpha.gather(0, labels.view(-1))
