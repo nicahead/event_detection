@@ -44,7 +44,7 @@ class TextCNNEncoder(nn.Module):
 class TextRCNNEncoder(nn.Module):
     def __init__(self):
         super(TextRCNNEncoder, self).__init__()
-        self.input_size = config.PROJ_DIM if config.PROJ else config.EMBED_DIM
+        self.input_size = config.EMBED_DIM
         self.rnn = nn.LSTM(  # if use nn.RNN(), it hardly learns
             input_size=self.input_size,
             hidden_size=config.HIDDEN_DIM,  # rnn hidden unit
@@ -79,7 +79,7 @@ class LSTMEncoder(nn.Module):
                            bidirectional=config.BI)
 
         # GRU
-        # self.rnn = nn.GRU(input_size=input_size, hidden_size=config.HIDDEN_DIM,
+        # self.rnn = nn.GRU(input_size=config.EMBED_DIM, hidden_size=config.HIDDEN_DIM,
         #                   num_layers=config.N_LAYERS, batch_first=True, dropout=dropout,
         #                   bidirectional=config.BI)
 
@@ -128,7 +128,7 @@ class SiameseNetwork(nn.Module):
 
         # 使用TextRCNN编码
         # self.encoder = TextRCNNEncoder()
-        # seq_in_size = 2 * config.HIDDEN_DIM
+
         seq_in_size = 3 * config.HIDDEN_DIM
         if config.BI:
             seq_in_size *= 2

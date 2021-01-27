@@ -167,7 +167,7 @@ def compare_graph(path1, name1, path2, name2):
     plt.show()
 
 
-# if __name__ == '__main__':
+if __name__ == '__main__':
     # evaluate('models/v2/epoch29-loss0.19202018300555243-acc0.8843977364591754-f0.8956196392103724', type='path')
 
     # model = torch.load('models/temp/epoch28-loss0.03184091075317352-acc0.8987068965517241-f0.9025969026000221')
@@ -183,8 +183,8 @@ def compare_graph(path1, name1, path2, name2):
 
     # compare_graph('models/v6/result.pkl', 'no weighted', 'models/v4/result.pkl', 'weighted')
 
-    acc_1, pre_1, rec_1, f1_1 = evaluate('dev',
-                                         'models/temp/epoch15-loss0.007570904709869469-acc0.8056322473771397-f0.8497374149926842',
+    acc_1, pre_1, rec_1, f1_1 = evaluate('test',
+                                         'models/temp/epoch22-loss0.003079123445143054-acc0.8977727013135351-f0.9160834161047348',
                                          type='path')
     print('best_acc_model:')
     print('accuracy：%.3f precision：%.3f recall：%.3f F1：%.3f' % (acc_1, pre_1, rec_1, f1_1))

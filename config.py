@@ -21,7 +21,7 @@ class config(object):
     # model config
     EMBED_DIM = 300  # 词嵌入向量维度
     HIDDEN_DIM = 150
-    N_LAYERS = 1
+    N_LAYERS = 2
     BI = True
     DROPOUT_RATE = 0.5
     FIX_EMDED = True
