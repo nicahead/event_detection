@@ -149,8 +149,8 @@ if __name__ == '__main__':
     if config.DEVICE.type == 'cuda':
         model = model.cuda()
     # optimizer = optim.Adam(model.parameters(), lr=config.LR)
-    optimizer = optim.Adam(model.parameters(), lr=config.LR, weight_decay=config.WEIGHT_DECAY)
-    # optimizer = optim.Adam(model.parameters(), lr=config.LR)
+    # optimizer = optim.Adam(model.parameters(), lr=config.LR, weight_decay=config.WEIGHT_DECAY)
+    optimizer = optim.Adam(model.parameters(), lr=config.LR)
     # 动态调整学习率
     # scheduler = lr_scheduler.ReduceLROnPlateau(optimizer, mode='max', factor=config.LR_DECAY_RATE, patience=3,
     #                                            verbose=True, threshold=0.01, threshold_mode='abs', cooldown=0,
@@ -161,8 +161,8 @@ if __name__ == '__main__':
     # 设置权重，正负样本不均衡
     # weight = torch.from_numpy(np.array([0.1, 0.5])).float().to(config.DEVICE)
     # loss_func = torch.nn.CrossEntropyLoss(weight=weight)
-    # loss_func = torch.nn.CrossEntropyLoss()
-    loss_func = focal_loss(alpha=[1, 50], gamma=2, num_classes=2)
+    loss_func = torch.nn.CrossEntropyLoss()
+    # loss_func = focal_loss(alpha=[1, 50], gamma=2, num_classes=2)  # 设置正样本权重
 
     train_losses = []
     dev_losses = []

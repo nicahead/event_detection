@@ -167,26 +167,33 @@ def compare_graph(path1, name1, path2, name2):
     plt.show()
 
 
+def atttention():
+    import seaborn as sns
+    fr = open('./pkl/attention_matrix.pkl', 'rb')
+    tokens, attention = pickle.load(fr)
+    plt.figure(figsize=(30, 20))
+    sns.heatmap(attention, vamx=100, vmin=0)
+    plt.savefig('./log/attention_matrix.png')
+
+    # 获取数据
+    # import heapq
+    # check_file = './log/check_attention_keywords.txt'
+    # clean(check_file)
+    # fw = open(check_file, 'a', encoding='utf8')
+    # for t, a in zip(tokens, attention):
+    #     temp = []
+    #     max_num_index_list = map(list(a).index, heapq.nlargest(5, list(a)))
+    #     for index in max_num_index_list:
+    #         word = t[index]
+    #     print(word)
+    #     temp.append(word)
+    #     fw.write(str(temp) + '\n')
+
 if __name__ == '__main__':
-    # evaluate('models/v2/epoch29-loss0.19202018300555243-acc0.8843977364591754-f0.8956196392103724', type='path')
-
-    # model = torch.load('models/temp/epoch28-loss0.03184091075317352-acc0.8987068965517241-f0.9025969026000221')
-    # if config.DEVICE.type == 'cuda':
-    #     model = model.cuda()
-    # while 1:
-    #     sentence = input()
-    #     # sentence = '乔丹2010年花2.75亿买下黄蜂队，他经营了9年共赚了多少钱呢？'
-    #     pred = predict_sentence(sentence, model)
-    #     id2label, label2id = get_event_dict()
-    #     pred = [id2label[i] for i in range(len(pred)) if pred[i] == 1]
-    #     print(pred)
-
     # compare_graph('models/v6/result.pkl', 'no weighted', 'models/v4/result.pkl', 'weighted')
 
     acc_1, pre_1, rec_1, f1_1 = evaluate('test',
-                                         'models/temp/epoch22-loss0.003079123445143054-acc0.8977727013135351-f0.9160834161047348',
-                                         type='path')
-    print('best_acc_model:')
+                                             'models/old/v5-1/epoch22-loss0.003079123445143054-acc0.8977727013135351-f0.9160834161047348',
+                                             type='path')
     print('accuracy：%.3f precision：%.3f recall：%.3f F1：%.3f' % (acc_1, pre_1, rec_1, f1_1))
-    # 获得 early stopping 时的模型参数
-
+    pass
