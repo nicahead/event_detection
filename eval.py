@@ -3,10 +3,13 @@
 # @Author    :   nicahead@gmail.com
 # @File      :   eval.py
 # @Desc      :
-import pandas as pd
 import torch
-from matplotlib import pyplot as plt
 import pickle
+import numpy as np
+import matplotlib.pyplot as plt
+import pandas as pd
+import matplotlib
+import matplotlib.ticker as ticker
 
 from config import config
 from data_helper import BatchManager
@@ -65,22 +68,24 @@ def evaluate(name, model, type='model'):
     res = []
     index = 1
     for text, label in zip(df['text'], df['label']):
-        pred = predict_sentence(text, model)
-        pred = pred.cpu().numpy().tolist()
-        pred = [i for i in range(len(pred)) if pred[i] == 1]  # 句子的事件类型，预测值
-        if len(pred) == 0:
-            pred = [label2id['NA']]
-        label = label.split(' ')
-        label = [label2id[item] for item in label]  # 句子的事件类型，真实值
-        if len(label) == 0:
-            label = [label2id['NA']]
-        res.append((pred, label))
-        # 打印预测结果
-        if name == 'test':
-            gold_ans = ','.join([id2label[x] for x in label])
-            pred_ans = ','.join([id2label[x] for x in pred])
-            print('Sample %d: [sentence=%s] \n\t [label=%s], [pred=%s]\n' % (index, text, gold_ans, pred_ans))
-        index += 1
+        # if len(label.split(' ')) > 1:
+        if 1:
+            pred = predict_sentence(text, model)
+            pred = pred.cpu().numpy().tolist()
+            pred = [i for i in range(len(pred)) if pred[i] == 1]  # 句子的事件类型，预测值
+            if len(pred) == 0:
+                pred = [label2id['NA']]
+            label = label.split(' ')
+            label = [label2id[item] for item in label]  # 句子的事件类型，真实值
+            if len(label) == 0:
+                label = [label2id['NA']]
+            res.append((pred, label))
+            # 打印预测结果
+            if name == 'test':
+                gold_ans = ','.join([id2label[x] for x in label])
+                pred_ans = ','.join([id2label[x] for x in pred])
+                print('Sample %d: [sentence=%s] \n\t [label=%s], [pred=%s]\n' % (index, text, gold_ans, pred_ans))
+            index += 1
     # out = evaluate_results_binary(res, label2id['NA'])
     # print(res)
     return evaluate_results(res, label2id['NA'])
@@ -167,33 +172,51 @@ def compare_graph(path1, name1, path2, name2):
     plt.show()
 
 
-def atttention():
-    import seaborn as sns
-    fr = open('./pkl/attention_matrix.pkl', 'rb')
-    tokens, attention = pickle.load(fr)
-    plt.figure(figsize=(30, 20))
-    sns.heatmap(attention, vamx=100, vmin=0)
-    plt.savefig('./log/attention_matrix.png')
+def show_att(alpha):
+    zhfont = matplotlib.font_manager.FontProperties(fname='/home/nic/software/truetype/SimHei.ttf')
+    plt.rcParams['axes.unicode_minus'] = False
+    ############# 句子 #############
+    global text
+    text = sentence_handle(text)
+    col = text.split(' ')  # 需要显示的词
 
-    # 获取数据
-    # import heapq
-    # check_file = './log/check_attention_keywords.txt'
-    # clean(check_file)
-    # fw = open(check_file, 'a', encoding='utf8')
-    # for t, a in zip(tokens, attention):
-    #     temp = []
-    #     max_num_index_list = map(list(a).index, heapq.nlargest(5, list(a)))
-    #     for index in max_num_index_list:
-    #         word = t[index]
-    #     print(word)
-    #     temp.append(word)
-    #     fw.write(str(temp) + '\n')
+    ############# 事件类 #############
+    # onto = pd.read_csv('data/ontology.csv')
+    # col = onto['text'][0].split(' ')
 
+    index = ['']
+    d = np.array(alpha[0:len(col)])
+    d = d.reshape((1, len(col)))
+    # d = 5 * d
+
+    df = pd.DataFrame(d, columns=col, index=index)
+
+    plt.rcParams['figure.figsize'] = (20.0, 4.0)  # 设置figure_size尺寸
+    fig = plt.figure()
+    ax = fig.add_subplot(111)
+    cax = ax.matshow(df, interpolation='nearest', cmap='hot_r')
+    fig.colorbar(cax)
+    tick_spacing = 1
+    ax.xaxis.set_major_locator(ticker.MultipleLocator(tick_spacing))
+    ax.yaxis.set_major_locator(ticker.MultipleLocator(tick_spacing))
+    # fontdict = {'rotation': 90}  # 设置文字旋转
+    fontdict = {'fontsize': 20}
+    ax.set_xticklabels([''] + list(df.columns), fontdict=fontdict, fontproperties=zhfont)
+    ax.set_yticklabels([''] + list(df.index))
+    plt.show()
+
+
+text = "随着赛季的结束，梅奥也就离开了达欣工程队，前往中国大陆加盟了NBL联赛的湖南队。"
 if __name__ == '__main__':
     # compare_graph('models/v6/result.pkl', 'no weighted', 'models/v4/result.pkl', 'weighted')
 
     acc_1, pre_1, rec_1, f1_1 = evaluate('test',
-                                             'models/old/v5-1/epoch22-loss0.003079123445143054-acc0.8977727013135351-f0.9160834161047348',
-                                             type='path')
+                                         'models/V2-1/epoch20-loss0.004661008452163749-acc0.9405882352941176-f0.9419729904371247',
+                                         type='path')
     print('accuracy：%.3f precision：%.3f recall：%.3f F1：%.3f' % (acc_1, pre_1, rec_1, f1_1))
-    pass
+    # pass
+
+    # model = torch.load("models/V3-1/epoch14-loss0.017002302362028616-acc0.933527696793003-f0.9398292622548363")
+    # if config.DEVICE.type == 'cuda':
+    #     model = model.cuda()
+    # predict_sentence(text, model)

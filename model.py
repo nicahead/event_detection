@@ -3,6 +3,9 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from config import config
+from eval import show_att
+
+g_alpha = []
 
 
 class TextCNNEncoder(nn.Module):
@@ -105,6 +108,8 @@ class LSTMEncoder(nn.Module):
             att = torch.matmul(u, self.u_omega)  # (batch_size, seq_len, 1)
             # 2. 使用softmax函数对这些权重进行归一化
             alpha = F.softmax(att, dim=1)  # (batch_size, seq_len, 1)
+            global g_alpha
+            g_alpha = alpha
             # 3. 将权重和相应的键值value进行加权求和得到最后的attention
             scored_out = outputs * alpha  # (batch_size, seq_len, 2 * HIDDEN_DIM)
             output = torch.sum(scored_out, dim=1)  # (batch_size,2 * HIDDEN_DIM)
@@ -147,8 +152,9 @@ class SiameseNetwork(nn.Module):
 
     def forward(self, input1, input2):
         premise = self.forward_once(input1)  # [batch_size,hidden_dim*2]
+        # show_att(g_alpha[0].reshape(-1).tolist())
         hypothesis = self.forward_once(input2)
-        cat = torch.cat([premise, hypothesis], 1)
-        sub = torch.abs(torch.sub(premise, hypothesis, alpha=1))
+        cat = torch.cat([premise, hypothesis], 1)  # 400,600
+        sub = torch.abs(torch.sub(premise, hypothesis, alpha=1)) # 400,300
         scores = self.out(torch.cat([cat, sub], 1))  # [batch_size,2]
         return scores
